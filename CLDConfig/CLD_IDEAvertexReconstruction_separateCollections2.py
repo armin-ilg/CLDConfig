@@ -97,8 +97,8 @@ elif CONFIG["InputMode"] == "EDM4hep":
     inp.collections = [
       'EventHeader',
       'MCParticles',
-      'VTXIBCollection',
-      'VTXDCollection',
+      'VertexBarrelCollection',
+      'VertexEndcapCollection',
       'InnerTrackerBarrelCollection',
       'OuterTrackerBarrelCollection',
       'ECalEndcapCollection',
@@ -139,8 +139,8 @@ if CONFIG["InputMode"] == "EDM4hep":
     EDM4hep2Lcio.collNameMapping = {
         'EventHeader':                     'EventHeader',
         'MCParticles':                     'MCParticle',
-        'VTXIBCollection':                 'VTXIBCollection',
-        'VTXDCollection':                  'VTXDCollection',
+        'VertexBarrelCollection':                 'VertexBarrelCollection',
+        'VertexEndcapCollection':                  'VertexEndcapCollection',
         'InnerTrackerBarrelCollection':    'InnerTrackerBarrelCollection',
         'OuterTrackerBarrelCollection':    'OuterTrackerBarrelCollection',
         'InnerTrackerEndcapCollection':    'InnerTrackerEndcapCollection',
@@ -163,8 +163,8 @@ OverlayParameters = {
     "Delta_t": ["20"],
     "NBunchtrain": ["20"],
     "Collection_IntegrationTimes": [
-        "VTXIBCollection", "380",
-        "VTXDCollection", "380",
+        "VertexBarrelCollection", "380",
+        "VertexEndcapCollection", "380",
         "InnerTrackerBarrelCollection", "380",
         "InnerTrackerEndcapCollection", "380",
         "OuterTrackerBarrelCollection", "380",
@@ -223,7 +223,9 @@ VXDInnerBarrelDigitiser.Parameters = {
                                  "IsStrip": ["false"],
                                  "ResolutionU": ["0.003", "0.003", "0.003", "0.014", "0.014"],
                                  "ResolutionV": ["0.003", "0.003", "0.003", "0.043", "0.043"],
-                                 "SimTrackHitCollectionName": ["VTXIBCollection"],
+                                #  "ResolutionU": ["0.003", "0.003", "0.003", "0.003", "0.014", "0.014"],
+                                #  "ResolutionV": ["0.003", "0.003", "0.003", "0.003", "0.043", "0.043"],
+                                 "SimTrackHitCollectionName": ["VertexBarrelCollection"],
                                  "SimTrkHitRelCollection": ["VXDTrackerHitRelations"],
                                  "SubDetectorName": ["VTXIB"],
                                  "TrackerHitCollectionName": ["VXDTrackerHits"]
@@ -237,7 +239,7 @@ VXDEndcapDigitiser.Parameters = {
                                  "IsStrip": ["false"],
                                  "ResolutionU": ["0.014", "0.014", "0.014"], # 50 µm/sqrt(12)
                                  "ResolutionV": ["0.043", "0.043", "0.043"], # 150 µm/sqrt(12)
-                                 "SimTrackHitCollectionName": ["VTXDCollection"],
+                                 "SimTrackHitCollectionName": ["VertexEndcapCollection"],
                                  "SimTrkHitRelCollection": ["VXDEndcapTrackerHitRelations"],
                                  "SubDetectorName": ["VertexEndcap"],
                                  "TrackerHitCollectionName": ["VXDEndcapTrackerHits"]
@@ -296,7 +298,7 @@ OuterEndcapPlanarDigiProcessor.Parameters = {
                                              }
 
 MyTruthTrackFinder = MarlinProcessorWrapper("MyTruthTrackFinder")
-MyTruthTrackFinder.OutputLevel = DEBUG
+MyTruthTrackFinder.OutputLevel = WARNING
 MyTruthTrackFinder.ProcessorType = "TruthTrackFinder"
 MyTruthTrackFinder.Parameters = {
                                  "FitForward": ["true"],
@@ -321,7 +323,7 @@ else:
     raise RuntimeError("Unknown detector model to chose CT_MAX_DISTANCE")
 
 MyConformalTracking = MarlinProcessorWrapper("MyConformalTracking")
-MyConformalTracking.OutputLevel = DEBUG
+MyConformalTracking.OutputLevel = WARNING
 MyConformalTracking.ProcessorType = "ConformalTrackingV2"
 MyConformalTracking.Parameters = {
                                   "DebugHits": ["DebugHits"],
@@ -476,7 +478,7 @@ MyRecoMCTruthLinker.Parameters = {
                                   "SaveBremsstrahlungPhotons": ["true"],
                                   "SimCaloHitCollections": ["ECalBarrelCollection", "ECalEndcapCollection", "HCalBarrelCollection", "HCalEndcapCollection", "HCalRingCollection", "YokeBarrelCollection", "YokeEndcapCollection", "LumiCalCollection"],
                                   "SimCalorimeterHitRelationNames": ["RelationCaloHit", "RelationMuonHit"],
-                                  "SimTrackerHitCollections": ["VTXIBCollection", "VTXDCollection", "InnerTrackerBarrelCollection", "OuterTrackerBarrelCollection", "InnerTrackerEndcapCollection", "OuterTrackerEndcapCollection"],
+                                  "SimTrackerHitCollections": ["VertexBarrelCollection", "VertexEndcapCollection", "InnerTrackerBarrelCollection", "OuterTrackerBarrelCollection", "InnerTrackerEndcapCollection", "OuterTrackerEndcapCollection"],
                                   "TrackCollection": ["SiTracks_Refitted"],
                                   "TrackMCTruthLinkName": ["SiTracksMCTruthLink"],
                                   "TrackerHitsRelInputCollections": ["VXDTrackerHitRelations", "VXDEndcapTrackerHitRelations", "InnerTrackerBarrelHitsRelations", "OuterTrackerBarrelHitsRelations", "InnerTrackerEndcapHitsRelations", "OuterTrackerEndcapHitsRelations"],
