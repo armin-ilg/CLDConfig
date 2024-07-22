@@ -1,6 +1,8 @@
-nEvents=1000
+nEvents=10000
 
-thetas=(80) # 80 70 60 50 40 30 20 10)
+# thetas=(80 60) # 80 70 60 50 40 30 20 10)
+thetas=(89 80 70 60 50 40 30 20 10)
+# thetas=(40 30)
 # momenta=(1 10 100)
 momenta=(1 10 100)
 particle="mu"
@@ -9,15 +11,16 @@ particle="mu"
 # echo $detectors
 # detectorNames=(CLD_o2_v05)
 
-# detectors=("/home/hep/arilg/VertexingPerformance/lcgeo/FCCee/CLD_o2_v05/CLD_o2_v05.xml")
-# detectorNames=(CLD_o2_v05)
+detectors=($K4GEO/FCCee/CLD/compact/CLD_o2_v05/CLD_o2_v05.xml)
+detectorNames=(CLD_o2_v05)
 
 
-detectors=("/home/hep/arilg/VertexingPerformance/lcgeo/FCCee/CLD_IDEAvertex/compact/CLD_o2_v05_IDEAvertex/CLD_o2_v05_IDEAvertex.xml")
-# detectorNames=(CLD_o2_v05_IDEAvertex_separateCollections)
-detectorNames=(CLD_o2_v05_IDEAvertex_separateCollections_R13.0)
+# detectors=("/home/hep/arilg/VertexingPerformance/lcgeo/FCCee/CLD_IDEAvertex/compact/CLD_o2_v05_IDEAvertex/CLD_o2_v05_IDEAvertex.xml")
+# # detectorNames=(CLD_o2_v05_IDEAvertex_separateCollections)
+# # detectorNames=(CLD_o2_v05_IDEAvertex_separateCollections_ultraLight)
+# detectorNames=(CLD_o2_v05_IDEAvertex)
 
-maxJobs=4
+maxJobs=10
 for iDetector in "${!detectors[@]}"; do
 	for momentum in "${momenta[@]}"; do
 		for theta in "${thetas[@]}"; do

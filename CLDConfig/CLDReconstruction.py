@@ -17,20 +17,14 @@
 # limitations under the License.
 #
 import os
-from Gaudi.Configuration import INFO, WARNING, DEBUG
+import sys
+from Gaudi.Configuration import *
 
 from Configurables import k4DataSvc, MarlinProcessorWrapper
-from k4MarlinWrapper.inputReader import create_reader, attach_edm4hep2lcio_conversion
-from k4FWCore.parseArgs import parser
-
-
-parser.add_argument("--inputFiles", action="extend", nargs="+", metavar=("file1", "file2"), help="One or multiple input files")
-parser.add_argument("--outputBasename", help="Basename of the output file(s)", default="output")
-parser.add_argument("--trackingOnly", action="store_true", help="Run only track reconstruction", default=False)
-reco_args = parser.parse_known_args()[0]
-
+from k4MarlinWrapper.parseConstants import *
 algList = []
 svcList = []
+
 
 evtsvc = k4DataSvc("EventDataSvc")
 svcList.append(evtsvc)
@@ -44,6 +38,8 @@ CONFIG = {
              "TrackingChoices": ["Truth", "Conformal"],
              "VertexUnconstrained": "OFF",
              "VertexUnconstrainedChoices": ["ON", "OFF"],
+             "InputMode": "LCIO",
+             "InputModeChoices": ["LCIO", "EDM4hep"], # could also mix inputs but then things get ugly
              "OutputMode": "EDM4Hep",
              "OutputModeChoices": ["LCIO", "EDM4hep"] #, "both"] FIXME: both is not implemented yet
 }
@@ -61,21 +57,105 @@ cellIDSvc.GeoSvcName = geoservice.name()
 cellIDSvc.OutputLevel = INFO
 svcList.append(cellIDSvc)
 
-if reco_args.inputFiles:
-    read = create_reader(reco_args.inputFiles, evtsvc)
-    read.OutputLevel = INFO
+output_basename = "output"
+
+from k4FWCore.parseArgs import parser
+parser.add_argument("--inputFiles", action="extend", nargs="+", metavar=("file1", "file2"), help="One or multiple input files")
+parser.add_argument("--outputBasename", help="Basename of the output file(s)", default=output_basename)
+parser.add_argument("--trackingOnly", action="store_true", help="Run only track reconstruction", default=False)
+my_opts = parser.parse_known_args()[0]
+
+output_basename = my_opts.outputBasename
+
+# Set input files here or via --inputFiles
+input_files = []
+
+if my_opts.inputFiles is not None:
+    input_files = my_opts.inputFiles
+print(f"opts: {my_opts}")
+print(f"input_files: {input_files}")
+
+if not input_files:
+    print("Error: missing input files, set them via --inputFiles")
+    sys.exit(1)
+
+if input_files[0].endswith(".slcio"):
+    CONFIG["InputMode"] = "LCIO"
+elif input_files[0].endswith(".root"):
+    CONFIG["InputMode"] = "EDM4hep"
+
+if CONFIG["InputMode"] == "LCIO":
+    from Configurables import LcioEvent
+    read = LcioEvent()
+    read.OutputLevel = WARNING
+    read.Files = input_files
     algList.append(read)
-else:
-    read = None
+elif CONFIG["InputMode"] == "EDM4hep":
+    evtsvc.inputs = input_files
+    from Configurables import PodioInput
+    inp = PodioInput('InputReader')
+    inp.collections = [
+      'EventHeader',
+      'MCParticles',
+      'VertexBarrelCollection',
+      'VertexEndcapCollection',
+      'InnerTrackerBarrelCollection',
+      'OuterTrackerBarrelCollection',
+      'ECalEndcapCollection',
+      'ECalEndcapCollectionContributions',
+      'ECalBarrelCollection',
+      'ECalBarrelCollectionContributions',
+      'HCalBarrelCollection',
+      'HCalBarrelCollectionContributions',
+      'InnerTrackerEndcapCollection',
+      'OuterTrackerEndcapCollection',
+      'HCalEndcapCollection',
+      'HCalEndcapCollectionContributions',
+      'HCalRingCollection',
+      'HCalRingCollectionContributions',
+      'YokeBarrelCollection',
+      'YokeBarrelCollectionContributions',
+      'YokeEndcapCollection',
+      'YokeEndcapCollectionContributions',
+      'LumiCalCollection',
+      'LumiCalCollectionContributions',
+    ]
+    inp.OutputLevel = WARNING
+    algList.append(inp)
 
 MyAIDAProcessor = MarlinProcessorWrapper("MyAIDAProcessor")
 MyAIDAProcessor.OutputLevel = WARNING
 MyAIDAProcessor.ProcessorType = "AIDAProcessor"
 MyAIDAProcessor.Parameters = {
                               "Compress": ["1"],
-                              "FileName": [f"{reco_args.outputBasename}_aida"],
+                              "FileName": [f"{output_basename}_aida"],
                               "FileType": ["root"]
                               }
+
+if CONFIG["InputMode"] == "EDM4hep":
+    from Configurables import EDM4hep2LcioTool
+    EDM4hep2Lcio = EDM4hep2LcioTool("EDM4hep2Lcio")
+    EDM4hep2Lcio.convertAll = False
+    EDM4hep2Lcio.collNameMapping = {
+        'EventHeader':                     'EventHeader',
+        'MCParticles':                     'MCParticle',
+        'VertexBarrelCollection':                 'VertexBarrelCollection',
+        'VertexEndcapCollection':                  'VertexEndcapCollection',
+        'InnerTrackerBarrelCollection':    'InnerTrackerBarrelCollection',
+        'OuterTrackerBarrelCollection':    'OuterTrackerBarrelCollection',
+        'InnerTrackerEndcapCollection':    'InnerTrackerEndcapCollection',
+        'OuterTrackerEndcapCollection':    'OuterTrackerEndcapCollection',
+        'ECalEndcapCollection':            'ECalEndcapCollection',
+        'ECalBarrelCollection':            'ECalBarrelCollection',
+        'HCalBarrelCollection':            'HCalBarrelCollection',
+        'HCalEndcapCollection':            'HCalEndcapCollection',
+        'HCalRingCollection':              'HCalRingCollection',
+        'YokeBarrelCollection':            'YokeBarrelCollection',
+        'YokeEndcapCollection':            'YokeEndcapCollection',
+        'LumiCalCollection':               'LumiCalCollection',
+    }
+    EDM4hep2Lcio.OutputLevel = INFO
+    MyAIDAProcessor.EDM4hep2LcioTool = EDM4hep2Lcio
 
 OverlayParameters = {
     "MCParticleCollectionName": ["MCParticle"],
@@ -1050,17 +1130,18 @@ elif CONFIG["Tracking"] == "Conformal":
 algList.append(Refit)
 
 # calorimeter digitization and pandora
-if not reco_args.trackingOnly:
+if not my_opts.trackingOnly:
     algList.append(MyDDCaloDigi[CONFIG["CalorimeterIntegrationTimeWindow"]])
     algList.append(MyDDSimpleMuonDigi)
     algList.append(MyDDMarlinPandora[CONFIG["CalorimeterIntegrationTimeWindow"]])
     algList.append(LumiCalReco)
+
 # monitoring and Reco to MCTruth linking
 algList.append(MyClicEfficiencyCalculator)
 algList.append(MyRecoMCTruthLinker)
 algList.append(MyTrackChecker)
 # pfo selector (might need re-optimisation)
-if not reco_args.trackingOnly:
+if not my_opts.trackingOnly:
     algList.append(MyCLICPfoSelectorDefault)
     algList.append(MyCLICPfoSelectorLoose)
     algList.append(MyCLICPfoSelectorTight)
@@ -1086,7 +1167,7 @@ if CONFIG["OutputMode"] == "LCIO":
                              "DropCollectionTypes": [],
                              "FullSubsetCollections": ["EfficientMCParticles", "InefficientMCParticles"],
                              "KeepCollectionNames": [],
-                             "LCIOOutputFile": [f"{reco_args.outputBasename}_REC.slcio"],
+                             "LCIOOutputFile": [f"{output_basename}_REC.slcio"],
                              "LCIOWriteMode": ["WRITE_NEW"]
                              }
 
@@ -1098,7 +1179,7 @@ if CONFIG["OutputMode"] == "LCIO":
                              "DropCollectionTypes": ["MCParticle", "LCRelation", "SimCalorimeterHit", "CalorimeterHit", "SimTrackerHit", "TrackerHit", "TrackerHitPlane", "Track", "ReconstructedParticle", "LCFloatVec"],
                              "FullSubsetCollections": ["EfficientMCParticles", "InefficientMCParticles", "MCPhysicsParticles"],
                              "KeepCollectionNames": ["MCParticlesSkimmed", "MCPhysicsParticles", "RecoMCTruthLink", "SiTracks", "SiTracks_Refitted", "PandoraClusters", "PandoraPFOs", "SelectedPandoraPFOs", "LooseSelectedPandoraPFOs", "TightSelectedPandoraPFOs", "RefinedVertexJets", "RefinedVertexJets_rel", "RefinedVertexJets_vtx", "RefinedVertexJets_vtx_RP", "BuildUpVertices", "BuildUpVertices_res", "BuildUpVertices_RP", "BuildUpVertices_res_RP", "BuildUpVertices_V0", "BuildUpVertices_V0_res", "BuildUpVertices_V0_RP", "BuildUpVertices_V0_res_RP", "PrimaryVertices", "PrimaryVertices_res", "PrimaryVertices_RP", "PrimaryVertices_res_RP", "RefinedVertices", "RefinedVertices_RP"],
-                             "LCIOOutputFile": [f"{reco_args.outputBasename}_DST.slcio"],
+                             "LCIOOutputFile": [f"{output_basename}_DST.slcio"],
                              "LCIOWriteMode": ["WRITE_NEW"]
                              }
     algList.append(Output_REC)
@@ -1116,12 +1197,9 @@ if CONFIG["OutputMode"] == "EDM4Hep":
     EventNumber.Lcio2EDM4hepTool = lcioConvTool
 
     from Configurables import PodioOutput
-    out = PodioOutput("PodioOutput", filename = f"{reco_args.outputBasename}_edm4hep.root")
+    out = PodioOutput("PodioOutput", filename = f"{output_basename}_edm4hep.root")
     out.outputCommands = ["keep *"]
     algList.append(out)
-
-# We need to convert the inputs in case we have EDM4hep input
-attach_edm4hep2lcio_conversion(algList, read)
 
 from Configurables import ApplicationMgr
 ApplicationMgr( TopAlg = algList,
