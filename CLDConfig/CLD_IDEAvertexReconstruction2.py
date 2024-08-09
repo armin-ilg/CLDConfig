@@ -313,14 +313,15 @@ MyTruthTrackFinder.Parameters = {
 if len(geoservice.detectors) > 1:
     raise RuntimeError("Too many XML files for the detector path, please only specify the main file!")
 
-if "_IDEAvertex_" in  geoservice.detectors[0]:
-    CT_MAX_DIST = "0.1;"  # semi-colon is important!
-elif any(small_vtx in geoservice.detectors[0] for small_vtx in ["_o2_", "_o3_", "_o4_"]):
-    CT_MAX_DIST = "0.05;"  # semi-colon is important!
-elif "_o1_" in  geoservice.detectors[0]:
-    CT_MAX_DIST = "0.03;"  # semi-colon is important!
-else:
-    raise RuntimeError("Unknown detector model to chose CT_MAX_DISTANCE")
+CT_MAX_DIST = "0.1;"
+# if "_IDEAvertex_" in  geoservice.detectors[0]:
+#     CT_MAX_DIST = "0.1;"  # semi-colon is important!
+# elif any(small_vtx in geoservice.detectors[0] for small_vtx in ["_o2_", "_o3_", "_o4_"]):
+#     CT_MAX_DIST = "0.05;"  # semi-colon is important!
+# elif "_o1_" in  geoservice.detectors[0]:
+#     CT_MAX_DIST = "0.03;"  # semi-colon is important!
+# else:
+#     raise RuntimeError("Unknown detector model to chose CT_MAX_DISTANCE")
 
 MyConformalTracking = MarlinProcessorWrapper("MyConformalTracking")
 MyConformalTracking.OutputLevel = WARNING
